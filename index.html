@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🐏密</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  :root{
+    --line:rgba(255,255,255,.09);
+    --panel:rgba(255,255,255,.035);
+    --muted:#7f8ba0;
+    --text:#e6ebf5;
+    --c1:#38bdf8;
+    --c2:#a78bfa;
+  }
+
+  html,body{height:100%}
+
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:#080b12;
+    color:var(--text);
+    min-height:100vh;
+    padding:44px 18px 90px;
+    display:flex;
+    justify-content:center;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* 背景光晕 */
+  body::before{
+    content:'';
+    position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(620px 420px at 12% -5%, rgba(56,189,248,.13), transparent 70%),
+      radial-gradient(720px 520px at 88% 8%, rgba(167,139,250,.15), transparent 70%),
+      radial-gradient(800px 600px at 50% 110%, rgba(56,189,248,.07), transparent 70%);
+  }
+
+  .app{width:100%;max-width:880px;position:relative;z-index:1}
+
+  /* ---------- 顶部 ---------- */
+  .hero{text-align:center;margin-bottom:30px}
+
+  .hero h1{
+    font-size:clamp(26px,4.4vw,36px);
+    font-weight:800;
+    letter-spacing:-.02em;
+    display:flex;align-items:baseline;justify-content:center;gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .hero h1 em{
+    font-style:normal;
+    font-size:.5em;
+    font-weight:600;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    background:linear-gradient(120deg,var(--c1),var(--c2));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+
+  .hero p{
+    margin-top:12px;
+    font-size:14px;
+    color:var(--muted);
+    line-height:1.7;
+  }
+
+  /* ---------- Tab ---------- */
+  .tabs{
+    display:flex;gap:6px;padding:6px;
+    background:rgba(255,255,255,.04);
+    border:1px solid var(--line);
+    border-radius:16px;
+    margin-bottom:18px;
+  }
+
+  .tab{
+    flex:1;
+    padding:12px 10px;
+    border:0;border-radius:11px;
+    background:transparent;
+    color:var(--muted);
+    font-family:inherit;
+    font-size:15px;font-weight:700;
+    cursor:pointer;
+    transition:.22s;
+    white-space:nowrap;
+  }
+
+  .tab:hover{color:#c3cddd}
+
+  .tab.active{
+    color:#fff;
+    background:linear-gradient(135deg,rgba(56,189,248,.20),rgba(167,139,250,.22));
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.11);
+  }
+
+  /* ---------- 面板 ---------- */
+  .panel{display:none}
+  .panel.active{display:block;animation:fade .32s cubic-bezier(.2,.8,.2,1)}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:16px;
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+  }
+
+  /* ---------- 拖拽区 ---------- */
+  .drop{
+    border:2px dashed rgba(255,255,255,.14);
+    border-radius:20px;
+    padding:52px 22px;
+    text-align:center;
+    cursor:pointer;
+    transition:.25s;
+    background:rgba(255,255,255,.018);
+    margin-bottom:16px;
+    user-select:none;
+  }
+
+  .drop:hover,.drop.over{
+    border-color:rgba(56,189,248,.65);
+    background:rgba(56,189,248,.06);
+  }
+
+  .drop.over{transform:scale(1.012)}
+
+  .drop svg{
+    width:44px;height:44px;
+    stroke:url(#g1);
+    margin-bottom:14px;
+    transition:.25s;
+  }
+
+  .drop:hover svg{transform:translateY(-3px)}
+
+  .drop-title{font-size:15px;font-weight:700;color:#dde5f2}
+  .drop-sub{font-size:13px;color:var(--muted);margin-top:8px}
+
+  /* ---------- 参数 ---------- */
+  .controls{display:flex;gap:20px;flex-wrap:wrap}
+
+  .field{display:flex;flex-direction:column;gap:9px;flex:1;min-width:170px}
+
+  .field > span{
+    font-size:11px;font-weight:700;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted);
+  }
+
+  .field b{color:var(--c1);font-weight:800}
+
+  select{
+    font-family:inherit;font-size:14px;font-weight:500;
+    padding:11px 12px;
+    border-radius:11px;
+    background:rgba(255,255,255,.05);
+    border:1px solid var(--line);
+    color:var(--text);
+    cursor:pointer;
+    outline:none;
+    transition:.2s;
+  }
+
+  select option{background:#131a26;color:#e6ebf5}
+
+  select:focus{border-color:rgba(56,189,248,.55)}
+
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:6px;border-radius:3px;
+    background:linear-gradient(90deg,var(--c1),var(--c2));
+    outline:none;cursor:pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:19px;height:19px;border-radius:50%;
+    background:#fff;
+    border:3px solid #0b0f17;
+    box-shadow:0 0 0 1px rgba(255,255,255,.35),0 2px 8px rgba(0,0,0,.5);
+    cursor:pointer;
+  }
+
+  input[type=range]::-moz-range-thumb{
+    width:13px;height:13px;border-radius:50%;
+    background:#fff;border:3px solid #0b0f17;cursor:pointer;
+  }
+
+  /* ---------- 结果 ---------- */
+  .result{animation:fade .3s cubic-bezier(.2,.8,.2,1)}
+
+  .preview-row{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+
+  .preview-row img{
+    width:116px;height:116px;
+    object-fit:contain;
+    border-radius:14px;
+    background:rgba(0,0,0,.32);
+    border:1px solid var(--line);
+    flex-shrink:0;
+  }
+
+  .preview-meta{display:flex;flex-direction:column;gap:9px;font-size:13px;min-width:0}
+
+  .preview-meta > div{display:flex;gap:12px;align-items:baseline}
+
+  .preview-meta .k{color:var(--muted);min-width:66px;font-size:12px}
+
+  .preview-meta .v{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#cfe6ff}
+
+  .pwbox{margin-top:18px}
+
+  .pwbox textarea{
+    width:100%;height:118px;
+    resize:vertical;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12px;line-height:1.65;
+    color:#8fe5ff;
+    background:rgba(0,0,0,.38);
+    border:1px solid var(--line);
+    border-radius:13px;
+    padding:13px;
+    word-break:break-all;
+    outline:none;
+    transition:.2s;
+  }
+
+  .pwbox textarea:focus{border-color:rgba(56,189,248,.45)}
+
+  /* ---------- 按钮 ---------- */
+  .btn{
+    font-family:inherit;
+    font-size:14px;font-weight:700;
+    padding:12px 20px;
+    border-radius:11px;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.055);
+    color:#dbe3f0;
+    cursor:pointer;
+    transition:.2s;
+    white-space:nowrap;
+  }
+
+  .btn:hover{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.2)}
+
+  .btn:active{transform:translateY(1px)}
+
+  .btn:disabled{opacity:.6;cursor:default;transform:none}
+
+  .btn.primary{
+    background:linear-gradient(135deg,var(--c1),var(--c2));
+    border-color:transparent;
+    color:#07101d;
+    font-weight:800;
+  }
+
+  .btn.primary:hover{
+    filter:brightness(1.08);
+    box-shadow:0 8px 24px -8px rgba(120,180,255,.65);
+  }
+
+  .btn.block{width:100%;margin-top:12px}
+
+  /* ---------- 解码区 ---------- */
+  #passwordIn{
+    width:100%;height:180px;
+    resize:vertical;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12px;line-height:1.65;
+    color:#cfe6ff;
+    background:rgba(0,0,0,.38);
+    border:1px solid var(--line);
+    border-radius:13px;
+    padding:14px;
+    outline:none;
+    word-break:break-all;
+    transition:.2s;
+  }
+
+  #passwordIn:focus{border-color:rgba(56,189,248,.45)}
+
+  .row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+
+  .error{
+    margin-top:14px;
+    padding:12px 14px;
+    border-radius:11px;
+    font-size:13px;
+    color:#ffb4c0;
+    background:rgba(255,80,110,.09);
+    border:1px solid rgba(255,80,110,.25);
+  }
+
+  #decodedImg{
+    max-width:100%;
+    max-height:430px;
+    display:block;
+    margin:0 auto;
+    border-radius:14px;
+  }
+
+  .img-wrap{
+    padding:16px;
+    border-radius:14px;
+    background:rgba(0,0,0,.3);
+    background-image:
+      linear-gradient(45deg,rgba(255,255,255,.045) 25%,transparent 25%),
+      linear-gradient(-45deg,rgba(255,255,255,.045) 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,rgba(255,255,255,.045) 75%),
+      linear-gradient(-45deg,transparent 75%,rgba(255,255,255,.045) 75%);
+    background-size:18px 18px;
+    background-position:0 0,0 9px,9px -9px,-9px 0;
+    margin-bottom:16px;
+  }
+
+  /* ---------- 页脚 ---------- */
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:#5d6779;
+    margin-top:34px;
+    line-height:1.9;
+  }
+
+  @media (max-width:560px){
+    body{padding:26px 13px 70px}
+    .drop{padding:38px 16px}
+    .preview-row{gap:14px}
+    .preview-row img{width:88px;height:88px}
+    .btn{padding:11px 16px;font-size:13px}
+  }
+</style>
+</head>
+<body>
+
+<!-- SVG 渐变定义 -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#a78bfa"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="app">
+
+  <header class="hero">
+    <h1>🐏密</h1>
+    <p>dev by deepseek</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="encode">图片 → 密码</button>
+    <button class="tab" data-tab="decode">密码 → 图片</button>
+  </nav>
+
+  <!-- ================= 编码面板 ================= -->
+  <section class="panel active" id="panel-encode">
+
+    <div class="drop" id="drop">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="3"/>
+        <circle cx="8.5" cy="8.5" r="1.8"/>
+        <path d="M21 15.5l-4.5-4.5L7 20.5"/>
+      </svg>
+      <p class="drop-title">点击选择图片，或拖拽到这里</p>
+      <p class="drop-sub">也可以直接 Ctrl / ⌘ + V 粘贴剪贴板中的图片</p>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+
+    <div class="card controls">
+      <label class="field">
+        <span>最大边长</span>
+        <select id="maxSize">
+          <option value="48">48 px · 极短</option>
+          <option value="96">96 px · 很短</option>
+          <option value="128" selected>128 px · 短</option>
+          <option value="256">256 px · 中等</option>
+          <option value="512">512 px · 清晰</option>
+          <option value="1024">1024 px · 很长</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>编码格式</span>
+        <select id="format">
+          <option value="image/webp" selected>WebP · 体积最小</option>
+          <option value="image/jpeg">JPEG</option>
+          <option value="image/png">PNG · 无损（很长）</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>质量 <b id="qualityVal">60</b></span>
+        <input type="range" id="quality" min="10" max="100" step="5" value="60">
+      </label>
+    </div>
+
+    <div class="card result" id="encodeResult" hidden>
+      <div class="preview-row">
+        <img id="previewOut" alt="压缩预览">
+        <div class="preview-meta">
+          <div><span class="k">原图尺寸</span><span class="v" id="origInfo">—</span></div>
+          <div><span class="k">压缩后</span><span class="v" id="dimOut">—</span></div>
+          <div><span class="k">密码长度</span><span class="v" id="pwLen">—</span></div>
+        </div>
+      </div>
+
+      <div class="pwbox">
+        <textarea id="passwordOut" readonly spellcheck="false"></textarea>
+        <button class="btn primary block" id="copyBtn">复制密码</button>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ================= 解码面板 ================= -->
+  <section class="panel" id="panel-decode">
+
+    <div class="card">
+      <textarea id="passwordIn" placeholder="在这里粘贴密码（那串图片编码）……" spellcheck="false"></textarea>
+
+      <div class="row">
+        <button class="btn primary" id="decodeBtn">解码还原</button>
+        <button class="btn" id="pasteBtn">从剪贴板粘贴</button>
+        <button class="btn" id="clearBtn">清空</button>
+      </div>
+
+      <p class="error" id="decodeError" hidden></p>
+    </div>
+
+    <div class="card result" id="decodeResult" hidden>
+      <div class="img-wrap">
+        <img id="decodedImg" alt="解码结果">
+      </div>
+      <button class="btn primary block" id="downloadBtn">下载图片</button>
+    </div>
+
+  </section>
+
+  <footer>
+    纯前端实现 · Canvas 压缩 + Base64 编码<br>
+    所有处理都在你的浏览器中完成，不会上传到任何服务器
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ==================== 工具函数 ==================== */
+
+  const $  = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  /** 文件 → dataURL */
+  function fileToDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload  = () => resolve(fr.result);
+      fr.onerror = () => reject(new Error('文件读取失败'));
+      fr.readAsDataURL(file);
+    });
+  }
+
+  /** src → HTMLImageElement */
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload  = () => resolve(img);
+      img.onerror = () => reject(new Error('无法解析图片数据'));
+      img.src = src;
+    });
+  }
+
+  /** 防抖 */
+  function debounce(fn, ms) {
+    let timer = null;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), ms);
+    };
+  }
+
+  /** 复制文本（带降级方案） */
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (_) {}
+      ta.remove();
+      return ok;
+    }
+  }
+
+  /** 按钮短暂反馈 */
+  function flash(btn, text) {
+    const original = btn.textContent;
+    btn.textContent = text;
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.disabled = false;
+    }, 1400);
+  }
+
+  /* ==================== Tab 切换 ==================== */
+
+  $$('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      $$('.tab').forEach(t => t.classList.toggle('active', t === tab));
+      $$('.panel').forEach(p =>
+        p.classList.toggle('active', p.id === 'panel-' + tab.dataset.tab)
+      );
+    });
+  });
+
+  /* ==================== 图片 → 密码 ==================== */
+
+  const dropZone   = $('#drop');
+  const fileInput  = $('#fileInput');
+  const maxSizeEl  = $('#maxSize');
+  const formatEl   = $('#format');
+  const qualityEl  = $('#quality');
+  const qualityVal = $('#qualityVal');
+
+  let sourceDataURL = null;   // 原图 dataURL
+  let encodeToken   = 0;      // 防止异步竞态
+
+  /* --- 选择 / 拖拽 --- */
+
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files && fileInput.files[0];
+    if (f) acceptFile(f);
+    fileInput.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach(evt =>
+    dropZone.addEventListener(evt, e => {
+      e.preventDefault();
+      dropZone.classList.add('over');
+    })
+  );
+
+  ['dragleave', 'drop'].forEach(evt =>
+    dropZone.addEventListener(evt, e => {
+      e.preventDefault();
+      dropZone.classList.remove('over');
+    })
+  );
+
+  dropZone.addEventListener('drop', e => {
+    const files = Array.from(e.dataTransfer.files || []);
+    const img = files.find(f => f.type.startsWith('image/'));
+    if (img) acceptFile(img);
+  });
+
+  // 阻止浏览器直接打开拖入的文件
+  ['dragover', 'drop'].forEach(evt =>
+    document.addEventListener(evt, e => e.preventDefault())
+  );
+
+  /* --- 粘贴图片 --- */
+
+  document.addEventListener('paste', e => {
+    if (!$('#panel-encode').classList.contains('active')) return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          acceptFile(file);
+          e.preventDefault();
+        }
+        return;
+      }
+    }
+  });
+
+  /* --- 接收文件 --- */
+
+  async function acceptFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    try {
+      sourceDataURL = await fileToDataURL(file);
+      $('#encodeResult').hidden = false;
+      await encode();
+    } catch (err) {
+      alert(err.message || '图片读取失败');
+    }
+  }
+
+  /* --- 核心编码 --- */
+
+  async function encode() {
+    if (!sourceDataURL) return;
+
+    const token   = ++encodeToken;
+    const maxSize = Number(maxSizeEl.value);
+    const quality = Number(qualityEl.value) / 100;
+    const format  = formatEl.value;
+
+    let img;
+    try {
+      img = await loadImage(sourceDataURL);
+    } catch (e) {
+      return;
+    }
+    if (token !== encodeToken) return;   // 已被更新的请求取代
+
+    const ow = img.naturalWidth;
+    const oh = img.naturalHeight;
+
+    // 等比缩放到限制内（不放大）
+    const scale = Math.min(1, maxSize / Math.max(ow, oh));
+    const w = Math.max(1, Math.round(ow * scale));
+    const h = Math.max(1, Math.round(oh * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = w;
+    canvas.height = h;
+
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    // JPEG 不支持透明，铺白底
+    if (format === 'image/jpeg') {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    ctx.drawImage(img, 0, 0, w, h);
+
+    // 导出（若浏览器不支持该格式则自动回退 PNG）
+    let dataURL = canvas.toDataURL(format, quality);
+    if (!dataURL.startsWith('data:' + format)) {
+      dataURL = canvas.toDataURL('image/png');
+    }
+
+    if (token !== encodeToken) return;
+
+    const b64 = dataURL.slice(dataURL.indexOf(',') + 1);
+
+    $('#previewOut').src        = dataURL;
+    $('#origInfo').textContent  = ow + ' × ' + oh;
+    $('#dimOut').textContent    = w + ' × ' + h;
+    $('#pwLen').textContent     = b64.length.toLocaleString() + ' 字符';
+    $('#passwordOut').value     = b64;
+  }
+
+  /* --- 参数变化时重新编码 --- */
+
+  [maxSizeEl, formatEl].forEach(el => el.addEventListener('change', encode));
+
+  qualityEl.addEventListener('input', () => {
+    qualityVal.textContent = qualityEl.value;
+    encode();
+  });
+
+  /* --- 复制密码 --- */
+
+  $('#copyBtn').addEventListener('click', async e => {
+    const txt = $('#passwordOut').value;
+    if (!txt) return;
+    const ok = await copyText(txt);
+    flash(e.currentTarget, ok ? '已复制 ✓' : '复制失败');
+  });
+
+  /* ==================== 密码 → 图片 ==================== */
+
+  const passwordIn = $('#passwordIn');
+  const decodeErr  = $('#decodeError');
+  const decodeRes  = $('#decodeResult');
+  const decodedImg = $('#decodedImg');
+
+  let decodeToken = 0;
+
+  /** 解析用户粘贴的密码，返回 { mime, b64 } */
+  function parsePassword(raw) {
+    let s = String(raw).trim();
+    let mime = null;
+
+    // 兼容完整的 data URL
+    const m = s.match(/^data:([^;,]+)?;base64,([\s\S]*)$/i);
+    if (m) {
+      mime = m[1] || null;
+      s = m[2];
+    }
+
+    // 清理：去空白 → base64url 还原 → 剔除非法字符
+    s = s.replace(/\s+/g, '')
+         .replace(/-/g, '+')
+         .replace(/_/g, '/')
+         .replace(/[^A-Za-z0-9+/=]/g, '');
+
+    // 补齐 padding
+    const rest = s.length % 4;
+    if (rest === 2)      s += '==';
+    else if (rest === 3) s += '=';
+
+    return { mime, b64: s };
+  }
+
+  /** 根据魔数猜测 MIME */
+  function guessMime(b64) {
+    if (b64.startsWith('/9j/'))          return 'image/jpeg';
+    if (b64.startsWith('iVBORw0KGgo'))   return 'image/png';
+    if (b64.startsWith('UklGR'))         return 'image/webp';
+    if (b64.startsWith('R0lGOD'))        return 'image/gif';
+    if (b64.startsWith('Qk'))            return 'image/bmp';
+    if (b64.startsWith('PHN2Zy') ||
+        b64.startsWith('PD94bWw'))       return 'image/svg+xml';
+    return 'image/png';
+  }
+
+  function showError(msg) {
+    decodeErr.textContent = msg;
+    decodeErr.hidden = false;
+    decodeRes.hidden = true;
+  }
+
+  async function decode() {
+    const raw = passwordIn.value;
+
+    if (!raw.trim()) {
+      decodeRes.hidden = true;
+      decodeErr.hidden = true;
+      return;
+    }
+
+    const { mime, b64 } = parsePassword(raw);
+
+    if (!b64) {
+      showError('密码为空或格式不正确');
+      return;
+    }
+
+    const finalMime = mime || guessMime(b64);
+    const url = 'data:' + finalMime + ';base64,' + b64;
+    const token = ++decodeToken;
+
+    try {
+      await loadImage(url);
+      if (token !== decodeToken) return;
+
+      decodedImg.src = url;
+      decodedImg.dataset.mime = finalMime;
+      decodeRes.hidden = false;
+      decodeErr.hidden = true;
+    } catch (e) {
+      if (token !== decodeToken) return;
+      showError('无法还原图片，密码可能不完整或已损坏');
+    }
+  }
+
+  /* --- 输入即解码（防抖） --- */
+  passwordIn.addEventListener('input', debounce(decode, 350));
+  $('#decodeBtn').addEventListener('click', decode);
+
+  /* --- 从剪贴板粘贴 --- */
+  $('#pasteBtn').addEventListener('click', async e => {
+    try {
+      const text = await navigator.clipboard.readText();
+      passwordIn.value = text;
+      decode();
+    } catch (_) {
+      flash(e.currentTarget, '请手动粘贴');
+    }
+  });
+
+  /* --- 清空 --- */
+  $('#clearBtn').addEventListener('click', () => {
+    passwordIn.value = '';
+    decodeRes.hidden = true;
+    decodeErr.hidden = true;
+    passwordIn.focus();
+  });
+
+  /* --- 下载还原的图片 --- */
+  $('#downloadBtn').addEventListener('click', () => {
+    const mime = decodedImg.dataset.mime || 'image/png';
+    const extMap = {
+      'image/jpeg': 'jpg',
+      'image/png':  'png',
+      'image/webp': 'webp',
+      'image/gif':  'gif',
+      'image/bmp':  'bmp',
+      'image/svg+xml': 'svg'
+    };
+    const ext = extMap[mime] || 'png';
+
+    const a = document.createElement('a');
+    a.href = decodedImg.src;
+    a.download = 'decoded-image.' + ext;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+
+})();
+</script>
+</body>
+</html>
