@@ -238,6 +238,9 @@
 
   .pwbox textarea:focus{border-color:rgba(56,189,248,.45)}
 
+  /* 编码结果里的按钮并排等宽 */
+  #encodeResult .row .btn{flex:1}
+
   /* ---------- 按钮 ---------- */
   .btn{
     font-family:inherit;
@@ -289,6 +292,12 @@
   }
 
   #passwordIn:focus{border-color:rgba(56,189,248,.45)}
+
+  /* 密码输入框拖拽悬停高亮 */
+  #passwordIn.over{
+    border-color:rgba(56,189,248,.7);
+    background:rgba(56,189,248,.08);
+  }
 
   .row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
 
@@ -420,7 +429,11 @@
 
       <div class="pwbox">
         <textarea id="passwordOut" readonly spellcheck="false"></textarea>
-        <button class="btn primary block" id="copyBtn">复制密码</button>
+
+        <div class="row">
+          <button class="btn primary" id="copyBtn">复制密码</button>
+          <button class="btn" id="downloadPwBtn">下载密码文件</button>
+        </div>
       </div>
     </div>
 
@@ -430,10 +443,13 @@
   <section class="panel" id="panel-decode">
 
     <div class="card">
-      <textarea id="passwordIn" placeholder="在这里粘贴密码（那串图片编码）……" spellcheck="false"></textarea>
+      <textarea id="passwordIn" placeholder="在这里粘贴密码（那串图片编码）……也可以把 .txt 密码文件拖进来" spellcheck="false"></textarea>
+
+      <input type="file" id="pwFileInput" accept=".txt,.text,.b64,.json,text/plain" hidden>
 
       <div class="row">
         <button class="btn primary" id="decodeBtn">解码还原</button>
+        <button class="btn" id="uploadBtn">上传密码文件</button>
         <button class="btn" id="pasteBtn">从剪贴板粘贴</button>
         <button class="btn" id="clearBtn">清空</button>
       </div>
@@ -476,6 +492,16 @@
     });
   }
 
+  /** 文件 → 文本 */
+  function readTextFile(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload  = () => resolve(String(fr.result));
+      fr.onerror = () => reject(new Error('文件读取失败'));
+      fr.readAsText(file, 'utf-8');
+    });
+  }
+
   /** src → HTMLImageElement */
   function loadImage(src) {
     return new Promise((resolve, reject) => {
@@ -513,6 +539,23 @@
     }
   }
 
+  /** 触发浏览器下载 */
+  function triggerDownload(href, filename, revoke) {
+    const a = document.createElement('a');
+    a.href = href;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    if (revoke) setTimeout(() => URL.revokeObjectURL(href), 2000);
+  }
+
+  /** 下载纯文本文件 */
+  function downloadText(filename, text) {
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    triggerDownload(URL.createObjectURL(blob), filename, true);
+  }
+
   /** 按钮短暂反馈 */
   function flash(btn, text) {
     const original = btn.textContent;
@@ -545,6 +588,7 @@
   const qualityVal = $('#qualityVal');
 
   let sourceDataURL = null;   // 原图 dataURL
+  let sourceName    = '';     // 原图文件名（用于生成密码文件名）
   let encodeToken   = 0;      // 防止异步竞态
 
   /* --- 选择 / 拖拽 --- */
@@ -607,6 +651,7 @@
     if (!file || !file.type.startsWith('image/')) return;
     try {
       sourceDataURL = await fileToDataURL(file);
+      sourceName    = file.name || '';
       $('#encodeResult').hidden = false;
       await encode();
     } catch (err) {
@@ -630,12 +675,11 @@
     } catch (e) {
       return;
     }
-    if (token !== encodeToken) return;   // 已被更新的请求取代
+    if (token !== encodeToken) return;
 
     const ow = img.naturalWidth;
     const oh = img.naturalHeight;
 
-    // 等比缩放到限制内（不放大）
     const scale = Math.min(1, maxSize / Math.max(ow, oh));
     const w = Math.max(1, Math.round(ow * scale));
     const h = Math.max(1, Math.round(oh * scale));
@@ -648,7 +692,6 @@
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    // JPEG 不支持透明，铺白底
     if (format === 'image/jpeg') {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, w, h);
@@ -656,7 +699,6 @@
 
     ctx.drawImage(img, 0, 0, w, h);
 
-    // 导出（若浏览器不支持该格式则自动回退 PNG）
     let dataURL = canvas.toDataURL(format, quality);
     if (!dataURL.startsWith('data:' + format)) {
       dataURL = canvas.toDataURL('image/png');
@@ -672,8 +714,6 @@
     $('#pwLen').textContent     = b64.length.toLocaleString() + ' 字符';
     $('#passwordOut').value     = b64;
   }
-
-  /* --- 参数变化时重新编码 --- */
 
   [maxSizeEl, formatEl].forEach(el => el.addEventListener('change', encode));
 
@@ -691,6 +731,26 @@
     flash(e.currentTarget, ok ? '已复制 ✓' : '复制失败');
   });
 
+  /* --- 下载密码文件 --- */
+
+  function makePwFileName(origName) {
+    let base = '';
+    if (origName) {
+      base = origName.replace(/\.[^.]+$/, '');
+      base = base.replace(/[\\/:*?"<>|\x00-\x1f]/g, '');
+      base = base.trim();
+    }
+    if (!base) base = 'password';
+    return base.slice(0, 60) + '-password.txt';
+  }
+
+  $('#downloadPwBtn').addEventListener('click', e => {
+    const txt = $('#passwordOut').value;
+    if (!txt) return;
+    downloadText(makePwFileName(sourceName), txt);
+    flash(e.currentTarget, '已下载 ✓');
+  });
+
   /* ==================== 密码 → 图片 ==================== */
 
   const passwordIn = $('#passwordIn');
@@ -700,25 +760,21 @@
 
   let decodeToken = 0;
 
-  /** 解析用户粘贴的密码，返回 { mime, b64 } */
   function parsePassword(raw) {
     let s = String(raw).trim();
     let mime = null;
 
-    // 兼容完整的 data URL
     const m = s.match(/^data:([^;,]+)?;base64,([\s\S]*)$/i);
     if (m) {
       mime = m[1] || null;
       s = m[2];
     }
 
-    // 清理：去空白 → base64url 还原 → 剔除非法字符
     s = s.replace(/\s+/g, '')
          .replace(/-/g, '+')
          .replace(/_/g, '/')
          .replace(/[^A-Za-z0-9+/=]/g, '');
 
-    // 补齐 padding
     const rest = s.length % 4;
     if (rest === 2)      s += '==';
     else if (rest === 3) s += '=';
@@ -726,7 +782,6 @@
     return { mime, b64: s };
   }
 
-  /** 根据魔数猜测 MIME */
   function guessMime(b64) {
     if (b64.startsWith('/9j/'))          return 'image/jpeg';
     if (b64.startsWith('iVBORw0KGgo'))   return 'image/png';
@@ -778,11 +833,9 @@
     }
   }
 
-  /* --- 输入即解码（防抖） --- */
   passwordIn.addEventListener('input', debounce(decode, 350));
   $('#decodeBtn').addEventListener('click', decode);
 
-  /* --- 从剪贴板粘贴 --- */
   $('#pasteBtn').addEventListener('click', async e => {
     try {
       const text = await navigator.clipboard.readText();
@@ -791,6 +844,59 @@
     } catch (_) {
       flash(e.currentTarget, '请手动粘贴');
     }
+  });
+
+  /* --- 上传密码文件 --- */
+
+  const pwFileInput = $('#pwFileInput');
+
+  $('#uploadBtn').addEventListener('click', () => pwFileInput.click());
+
+  pwFileInput.addEventListener('change', () => {
+    const f = pwFileInput.files && pwFileInput.files[0];
+    if (f) readPasswordFile(f);
+    pwFileInput.value = '';
+  });
+
+  /** 读取密码文件 → 填入输入框 → 解码（不做体积限制） */
+  async function readPasswordFile(file) {
+    if (file.type.startsWith('image/')) {
+      showError('这是图片文件，请选择包含密码的文本文件（.txt）');
+      return;
+    }
+
+    try {
+      const text = await readTextFile(file);
+      if (!text.trim()) {
+        showError('文件内容为空');
+        return;
+      }
+      passwordIn.value = text.trim();
+      decode();
+    } catch (err) {
+      showError(err.message || '文件读取失败');
+    }
+  }
+
+  /* --- 把密码文件拖到输入框上 --- */
+
+  ['dragenter', 'dragover'].forEach(evt =>
+    passwordIn.addEventListener(evt, e => {
+      e.preventDefault();
+      passwordIn.classList.add('over');
+    })
+  );
+
+  ['dragleave', 'drop'].forEach(evt =>
+    passwordIn.addEventListener(evt, e => {
+      e.preventDefault();
+      passwordIn.classList.remove('over');
+    })
+  );
+
+  passwordIn.addEventListener('drop', e => {
+    const file = (e.dataTransfer.files || [])[0];
+    if (file) readPasswordFile(file);
   });
 
   /* --- 清空 --- */
@@ -814,12 +920,7 @@
     };
     const ext = extMap[mime] || 'png';
 
-    const a = document.createElement('a');
-    a.href = decodedImg.src;
-    a.download = 'decoded-image.' + ext;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    triggerDownload(decodedImg.src, 'decoded-image.' + ext, false);
   });
 
 })();
